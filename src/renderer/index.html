@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="overlay.css">
+</head>
+<body>
+  <div id="overlay" class="overlay">
+    <div id="icon"></div>
+    <canvas id="waveform" class="waveform" width="120" height="28"></canvas>
+    <span id="label"></span>
+  </div>
+
+  <script>
+    const overlay = document.getElementById('overlay')
+    const iconContainer = document.getElementById('icon')
+    const waveformCanvas = document.getElementById('waveform')
+    const label = document.getElementById('label')
+
+    let mediaRecorder = null
+    let audioStream = null
+    let audioContext = null
+    let analyser = null
+    let animationId = null
+
+    function stopWaveform() {
+      if (animationId) {
+        cancelAnimationFrame(animationId)
+        animationId = null
+      }
+      if (audioContext) {
+        audioContext.close().catch(() => {})
+        audioContext = null
+        analyser = null
+      }
+      waveformCanvas.style.display = 'none'
+      const ctx = waveformCanvas.getContext('2d')
+      ctx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height)
+    }
+
+    function startWaveform(stream) {
+      stopWaveform()
+
+      audioContext = new AudioContext()
+      analyser = audioContext.createAnalyser()
+      analyser.fftSize = 64
+      analyser.smoothingTimeConstant = 0.7
+
+      const source = audioContext.createMediaStreamSource(stream)
+      source.connect(analyser)
+
+      waveformCanvas.style.display = 'block'
+      const ctx = waveformCanvas.getContext('2d')
+      const bufferLength = analyser.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
+
+      const barCount = 24
+      const barWidth = 3
+      const barGap = 2
+      const totalWidth = barCount * (barWidth + barGap) - barGap
+      const offsetX = (waveformCanvas.width - totalWidth) / 2
+
+      function draw() {
+        animationId = requestAnimationFrame(draw)
+        analyser.getByteFrequencyData(dataArray)
+
+        ctx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height)
+
+        for (let i = 0; i < barCount; i++) {
+          const binIndex = Math.min(Math.floor((i / barCount) * (bufferLength * 0.8)) + 1, bufferLength - 1)
+          const value = dataArray[binIndex] / 255
+
+          const minHeight = 3
+          const barHeight = Math.max(minHeight, value * waveformCanvas.height * 0.9)
+
+          const x = offsetX + i * (barWidth + barGap)
+          const y = (waveformCanvas.height - barHeight) / 2
+
+          // White at low volume, red tint at high volume
+          const r = 255
+          const g = Math.round(255 - value * 196)
+          const b = Math.round(255 - value * 207)
+          const alpha = 0.5 + value * 0.5
+
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`
+          ctx.beginPath()
+          ctx.roundRect(x, y, barWidth, barHeight, 1.5)
+          ctx.fill()
+        }
+      }
+
+      draw()
+    }
+
+    function setOverlayState(state) {
+      // Clear icon container and stop waveform
+      stopWaveform()
+      while (iconContainer.firstChild) {
+        iconContainer.removeChild(iconContainer.firstChild)
+      }
+
+      switch (state) {
+        case 'recording': {
+          const dot = document.createElement('div')
+          dot.className = 'recording-dot'
+          iconContainer.appendChild(dot)
+
+          // Start waveform if audio stream is already available
+          if (audioStream) {
+            startWaveform(audioStream)
+          }
+
+          label.textContent = 'Recording...'
+          break
+        }
+        case 'processing': {
+          const spinner = document.createElement('div')
+          spinner.className = 'spinner'
+          iconContainer.appendChild(spinner)
+          label.textContent = 'Processing...'
+          break
+        }
+        case 'success': {
+          const check = document.createElement('span')
+          check.className = 'checkmark'
+          check.textContent = '\u2713'
+          iconContainer.appendChild(check)
+          label.textContent = 'Inserted'
+          break
+        }
+        case 'clipboard': {
+          const clip = document.createElement('span')
+          clip.className = 'clipboard-icon'
+          clip.textContent = '\uD83D\uDCCB'
+          iconContainer.appendChild(clip)
+          label.textContent = 'Copied'
+          break
+        }
+        case 'error': {
+          const err = document.createElement('span')
+          err.className = 'error-icon'
+          err.textContent = '\u2717'
+          iconContainer.appendChild(err)
+          label.textContent = 'Error'
+          break
+        }
+      }
+
+      overlay.classList.add('visible')
+    }
+
+    window.whisperme.onStateChanged((state) => {
+      if (state === 'idle') {
+        stopWaveform()
+        overlay.classList.remove('visible')
+      } else {
+        setOverlayState(state)
+      }
+    })
+
+    // Audio recording in renderer (has access to navigator.mediaDevices)
+    window.whisperme.onStartRecording(async () => {
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        mediaRecorder = new MediaRecorder(audioStream, {
+          mimeType: 'audio/webm;codecs=opus',
+        })
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            e.data.arrayBuffer().then((buffer) => {
+              window.whisperme.sendAudioData(buffer)
+            })
+          }
+        }
+
+        mediaRecorder.start(100) // 100ms chunks
+
+        // Stream is now ready – start waveform if overlay is showing recording
+        if (overlay.classList.contains('visible')) {
+          startWaveform(audioStream)
+        }
+      } catch (err) {
+        console.error('Failed to start recording:', err)
+      }
+    })
+
+    window.whisperme.onStopRecording(() => {
+      stopWaveform()
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.onstop = () => {
+          window.whisperme.sendRecordingComplete()
+          if (audioStream) {
+            audioStream.getTracks().forEach((t) => t.stop())
+            audioStream = null
+          }
+        }
+        mediaRecorder.stop()
+      } else {
+        window.whisperme.sendRecordingComplete()
+      }
+    })
+  </script>
+</body>
+</html>

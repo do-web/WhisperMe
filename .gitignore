@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+bin/
+build/Release/
+build/Debug/
+build/*.mk
+build/Makefile
+build/gyp-mac-tool
+build/binding.Makefile
+build/config.gypi
+build/fn_monitor.target.mk
+
+# Swift
+swift-helper/.build/
+
+# Electron-builder artifacts
+*.dmg
+*.zip
+*.blockmap
+
+# Environment & secrets
+.env
+
+# IDE
+.idea/
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+
+# Logs
+*.log

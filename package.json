@@ -1,0 +1,25 @@
+{
+  "name": "whisperme",
+  "version": "1.0.0",
+  "description": "macOS Voice-to-Text Menu Bar App",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "npm run build:swift && npm run build:ts && electron .",
+    "build:ts": "tsc -p tsconfig.json",
+    "build:swift": "bash scripts/build-swift-helper.sh",
+    "build": "npm run build:swift && npm run build:ts",
+    "dist": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "node-addon-api": "^8.6.0",
+    "openai": "^4.73.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
+    "@types/node": "^22.0.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WhisperMe Log</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'SF Mono', Menlo, Monaco, monospace;
+      font-size: 12px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+    #toolbar {
+      position: sticky;
+      top: 0;
+      background: #2d2d2d;
+      padding: 8px 12px;
+      border-bottom: 1px solid #404040;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1;
+    }
+    #toolbar span { color: #888; font-size: 11px; }
+    #toolbar button {
+      background: #404040;
+      color: #d4d4d4;
+      border: none;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    #toolbar button:hover { background: #505050; }
+    #log {
+      padding: 8px 12px;
+      overflow-y: auto;
+      height: calc(100vh - 40px);
+    }
+    .entry { padding: 2px 0; white-space: pre-wrap; word-break: break-all; }
+    .entry .time { color: #666; }
+    .entry.info .msg { color: #d4d4d4; }
+    .entry.error .msg { color: #f44747; }
+    .entry.warn .msg { color: #cca700; }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <span id="count">0 entries</span>
+    <button id="clearBtn">Clear</button>
+  </div>
+  <div id="log"></div>
+  <script>
+    const { ipcRenderer } = require('electron')
+    const logEl = document.getElementById('log')
+    const countEl = document.getElementById('count')
+    let entryCount = 0
+
+    function addLine(entry) {
+      const div = document.createElement('div')
+      div.className = 'entry ' + entry.level
+
+      const time = document.createElement('span')
+      time.className = 'time'
+      time.textContent = entry.timestamp + ' '
+
+      const msg = document.createElement('span')
+      msg.className = 'msg'
+      msg.textContent = entry.message
+
+      div.appendChild(time)
+      div.appendChild(msg)
+      logEl.appendChild(div)
+      entryCount++
+      countEl.textContent = entryCount + ' entries'
+      logEl.scrollTop = logEl.scrollHeight
+    }
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      while (logEl.firstChild) logEl.removeChild(logEl.firstChild)
+      entryCount = 0
+      countEl.textContent = '0 entries'
+    })
+
+    ipcRenderer.on('log-entry', (_, entry) => addLine(entry))
+    ipcRenderer.on('log-history', (_, entries) => entries.forEach(addLine))
+  </script>
+</body>
+</html>
