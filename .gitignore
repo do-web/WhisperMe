@@ -4,14 +4,7 @@ node_modules/
 # Build output
 dist/
 bin/
-build/Release/
-build/Debug/
-build/*.mk
-build/Makefile
-build/gyp-mac-tool
-build/binding.Makefile
-build/config.gypi
-build/fn_monitor.target.mk
+build/
 
 # Swift
 swift-helper/.build/
