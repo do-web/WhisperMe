@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+bin/
+build/
+
+# Swift
+swift-helper/.build/
+
+# Electron-builder artifacts
+*.dmg
+*.zip
+*.blockmap
+
+# Environment & secrets
+.env
+
+# IDE
+.idea/
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+
+# Logs
+*.log

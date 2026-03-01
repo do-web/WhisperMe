@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WhisperMe Settings</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      padding: 24px;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      font-size: 13px;
+    }
+    h1 { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #6e6e73;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .field input[type="text"],
+    .field input[type="password"],
+    .field select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d2d2d7;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus,
+    .field select:focus {
+      border-color: #0071e3;
+    }
+    .divider {
+      height: 1px;
+      background: #d2d2d7;
+      margin: 20px 0;
+    }
+    .checkbox-field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .checkbox-field input { width: 16px; height: 16px; }
+    .checkbox-field label {
+      font-weight: 400;
+      color: #1d1d1f;
+      font-size: 14px;
+    }
+    .btn {
+      margin-top: 8px;
+      padding: 8px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-primary {
+      background: #0071e3;
+      color: #fff;
+    }
+    .btn-primary:hover { background: #0077ed; }
+    .status {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #30d158;
+      display: none;
+    }
+    .status.visible { display: block; }
+    .footer {
+      position: absolute;
+      bottom: 16px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 12px;
+      color: #86868b;
+    }
+    .footer a {
+      color: #0071e3;
+      text-decoration: none;
+    }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>WhisperMe Settings</h1>
+
+  <div class="field">
+    <label>OpenAI API Key</label>
+    <input type="password" id="apiKey" placeholder="sk-...">
+  </div>
+
+  <div class="field">
+    <label>Transcription Language</label>
+    <select id="language">
+      <option value="auto">Auto-detect</option>
+      <option value="de">Deutsch</option>
+      <option value="en">English</option>
+      <option value="fr">Français</option>
+      <option value="es">Español</option>
+      <option value="it">Italiano</option>
+      <option value="pt">Português</option>
+      <option value="nl">Nederlands</option>
+      <option value="pl">Polski</option>
+      <option value="ja">日本語</option>
+      <option value="zh">中文</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>Push-to-Talk Key</label>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <input type="text" id="hotkeyDisplay" readonly
+             style="flex: 1; text-align: center; font-weight: 600; cursor: default;"
+             value="FN (Globe)">
+      <button class="btn" id="hotkeyRecordBtn"
+              style="margin-top: 0; padding: 8px 12px; background: #e8e8ed; color: #1d1d1f;">
+        Change
+      </button>
+      <button class="btn" id="hotkeyFnBtn"
+              style="margin-top: 0; padding: 8px 12px; background: #e8e8ed; color: #1d1d1f; display: none;">
+        FN
+      </button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="checkbox-field">
+    <input type="checkbox" id="correctionEnabled" checked>
+    <label for="correctionEnabled">Auto-correct transcription (GPT-5-mini)</label>
+  </div>
+
+  <div class="checkbox-field">
+    <input type="checkbox" id="muteMediaWhileRecording">
+    <label for="muteMediaWhileRecording">Mute audio while recording</label>
+  </div>
+
+  <div class="checkbox-field">
+    <input type="checkbox" id="launchAtLogin">
+    <label for="launchAtLogin">Launch at login</label>
+  </div>
+
+  <button class="btn btn-primary" id="saveBtn">Save</button>
+  <div class="status" id="status">Saved!</div>
+
+  <div class="footer">
+    Made by <a href="https://dominikweber.me/" target="_blank">Dominik Weber</a>
+  </div>
+
+  <script>
+    const apiKeyInput = document.getElementById('apiKey')
+    const languageSelect = document.getElementById('language')
+    const hotkeyDisplay = document.getElementById('hotkeyDisplay')
+    const hotkeyRecordBtn = document.getElementById('hotkeyRecordBtn')
+    const hotkeyFnBtn = document.getElementById('hotkeyFnBtn')
+    const correctionCheckbox = document.getElementById('correctionEnabled')
+    const muteMediaCheckbox = document.getElementById('muteMediaWhileRecording')
+    const launchAtLoginCheckbox = document.getElementById('launchAtLogin')
+    const saveBtn = document.getElementById('saveBtn')
+    const statusEl = document.getElementById('status')
+
+    let currentHotkey = 'FN'
+    let isRecording = false
+
+    // Map browser event.code to our internal key names
+    function browserCodeToKey(code) {
+      const map = {
+        'Space': 'SPACE', 'Enter': 'RETURN', 'Tab': 'TAB', 'Escape': 'ESCAPE',
+        'Backspace': 'BACKSPACE', 'Delete': 'DELETE',
+        'ArrowUp': 'UP', 'ArrowDown': 'DOWN', 'ArrowLeft': 'LEFT', 'ArrowRight': 'RIGHT',
+        'Home': 'HOME', 'End': 'END', 'PageUp': 'PAGEUP', 'PageDown': 'PAGEDOWN',
+      }
+      if (map[code]) return map[code]
+      if (/^F\d+$/.test(code)) return code                      // F1–F20
+      if (/^Key([A-Z])$/.test(code)) return code.match(/^Key([A-Z])$/)[1]  // KeyA → A
+      if (/^Digit(\d)$/.test(code)) return code.match(/^Digit(\d)$/)[1]    // Digit1 → 1
+      if (/^Numpad(\d)$/.test(code)) return 'NUM' + code.match(/^Numpad(\d)$/)[1]
+      if (code === 'Minus') return '-'
+      if (code === 'Equal') return '='
+      if (code === 'BracketLeft') return '['
+      if (code === 'BracketRight') return ']'
+      if (code === 'Semicolon') return ';'
+      if (code === 'Quote') return "'"
+      if (code === 'Backquote') return '`'
+      if (code === 'Backslash') return '\\'
+      if (code === 'Comma') return ','
+      if (code === 'Period') return '.'
+      if (code === 'Slash') return '/'
+      return null
+    }
+
+    function formatHotkey(hotkey) {
+      if (hotkey === 'FN') return 'FN (Globe)'
+      return hotkey.split('+').map(p => {
+        if (p === 'CTRL') return '⌃ Ctrl'
+        if (p === 'CMD') return '⌘ Cmd'
+        if (p === 'SHIFT') return '⇧ Shift'
+        if (p === 'ALT') return '⌥ Option'
+        return p
+      }).join(' + ')
+    }
+
+    function updateDisplay() {
+      hotkeyDisplay.value = formatHotkey(currentHotkey)
+      hotkeyFnBtn.style.display = currentHotkey !== 'FN' ? 'inline-block' : 'none'
+    }
+
+    // Capture keydown during recording
+    function onKeyCapture(e) {
+      e.preventDefault()
+      e.stopPropagation()
+
+      // Ignore lone modifier presses — wait for a real key
+      if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return
+
+      const parts = []
+      if (e.ctrlKey) parts.push('CTRL')
+      if (e.metaKey) parts.push('CMD')
+      if (e.shiftKey) parts.push('SHIFT')
+      if (e.altKey) parts.push('ALT')
+
+      const key = browserCodeToKey(e.code)
+      if (!key) return
+
+      parts.push(key)
+      currentHotkey = parts.join('+')
+
+      stopRecording()
+    }
+
+    function startRecording() {
+      isRecording = true
+      hotkeyRecordBtn.textContent = 'Cancel'
+      hotkeyDisplay.value = 'Press keys...'
+      hotkeyDisplay.style.borderColor = '#0071e3'
+      document.addEventListener('keydown', onKeyCapture, true)
+    }
+
+    function stopRecording() {
+      isRecording = false
+      hotkeyRecordBtn.textContent = 'Change'
+      hotkeyDisplay.style.borderColor = '#d2d2d7'
+      document.removeEventListener('keydown', onKeyCapture, true)
+      updateDisplay()
+    }
+
+    hotkeyRecordBtn.addEventListener('click', () => {
+      if (isRecording) {
+        stopRecording()
+      } else {
+        startRecording()
+      }
+    })
+
+    hotkeyFnBtn.addEventListener('click', () => {
+      currentHotkey = 'FN'
+      updateDisplay()
+    })
+
+    // Load settings
+    window.whisperme.getSettings().then((settings) => {
+      if (settings.hasApiKey) apiKeyInput.placeholder = 'API key set (enter new to change)'
+      languageSelect.value = settings.language || 'auto'
+      correctionCheckbox.checked = settings.correctionEnabled !== false
+      muteMediaCheckbox.checked = !!settings.muteMediaWhileRecording
+      launchAtLoginCheckbox.checked = !!settings.launchAtLogin
+      currentHotkey = settings.hotkeyKey || 'FN'
+      updateDisplay()
+    })
+
+    // Open external links in default browser
+    document.querySelectorAll('a[target="_blank"]').forEach((link) => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault()
+        window.whisperme.openExternal(link.href)
+      })
+    })
+
+    // Save settings
+    saveBtn.addEventListener('click', async () => {
+      const settings = {
+        language: languageSelect.value,
+        correctionEnabled: correctionCheckbox.checked,
+        muteMediaWhileRecording: muteMediaCheckbox.checked,
+        launchAtLogin: launchAtLoginCheckbox.checked,
+        hotkeyKey: currentHotkey,
+      }
+
+      // Only update API key if user typed something new
+      const apiKeyValue = apiKeyInput.value.trim()
+      if (apiKeyValue) {
+        settings.openaiApiKey = apiKeyValue
+      }
+
+      await window.whisperme.saveSettings(settings)
+      statusEl.classList.add('visible')
+      setTimeout(() => statusEl.classList.remove('visible'), 2000)
+    })
+  </script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  -webkit-app-region: no-drag;
+  overflow: hidden;
+}
+
+.overlay {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 28px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.overlay.visible {
+  display: flex;
+}
+
+/* Icon */
+.overlay-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Recording dot */
+.recording-dot {
+  width: 10px;
+  height: 10px;
+  background: #ff3b30;
+  border-radius: 50%;
+  animation: pulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* Waveform canvas */
+.waveform {
+  display: none;
+  flex-shrink: 0;
+  width: 120px;
+  height: 28px;
+}
+
+/* Spinner */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Success checkmark */
+.checkmark {
+  color: #30d158;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Clipboard icon */
+.clipboard-icon {
+  color: #ffd60a;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Error */
+.error-icon {
+  color: #ff453a;
+  font-size: 18px;
+  line-height: 1;
+}
